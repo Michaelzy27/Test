@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TON Transfer</title>
+  <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg: #04080f;
+      --surface: #0c1220;
+      --border: #1a2640;
+      --ton: #0098ea;
+      --ton-dim: #0077b8;
+      --ton-glow: rgba(0,152,234,0.18);
+      --text: #e8f1ff;
+      --muted: #5a7a9a;
+      --success: #00d97e;
+      --error: #ff4d6d;
+      --mono: 'DM Mono', monospace;
+      --display: 'Syne', sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--mono);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow-x: hidden;
+    }
+
+    /* Animated grid background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,152,234,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,152,234,0.04) 1px, transparent 1px);
+      background-size: 40px 40px;
+      animation: gridDrift 20s linear infinite;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Radial glow */
+    body::after {
+      content: '';
+      position: fixed;
+      top: 30%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(0,152,234,0.08) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+      animation: pulse 6s ease-in-out infinite;
+    }
+
+    @keyframes gridDrift {
+      0% { transform: translateY(0); }
+      100% { transform: translateY(40px); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.6; transform: translate(-50%, -50%) scale(1); }
+      50% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 480px;
+      padding: 24px 16px;
+      animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(32px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+
+    .ton-logo {
+      width: 40px; height: 40px;
+      background: var(--ton);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--display);
+      font-weight: 800;
+      font-size: 16px;
+      color: #fff;
+      box-shadow: 0 0 24px var(--ton-glow);
+      flex-shrink: 0;
+    }
+
+    .header-text h1 {
+      font-family: var(--display);
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: var(--text);
+    }
+
+    .header-text p {
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+
+    /* Wallet connect button slot */
+    #connect-btn-wrap {
+      display: flex;
+      justify-content: flex-end;
+      margin-left: auto;
+    }
+
+    /* Card */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--ton), transparent);
+      opacity: 0.5;
+    }
+
+    /* Field */
+    .field {
+      margin-bottom: 20px;
+    }
+
+    .field label {
+      display: block;
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .field input {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 13px 16px;
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .field input::placeholder { color: var(--muted); }
+
+    .field input:focus {
+      border-color: var(--ton);
+      box-shadow: 0 0 0 3px var(--ton-glow);
+    }
+
+    /* Amount row */
+    .amount-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: end;
+    }
+
+    .amount-badge {
+      background: rgba(0,152,234,0.12);
+      border: 1px solid rgba(0,152,234,0.3);
+      border-radius: 8px;
+      padding: 13px 14px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--ton);
+      white-space: nowrap;
+    }
+
+    /* Comment field */
+    .field textarea {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 13px 16px;
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--text);
+      outline: none;
+      resize: none;
+      height: 72px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .field textarea::placeholder { color: var(--muted); }
+    .field textarea:focus {
+      border-color: var(--ton);
+      box-shadow: 0 0 0 3px var(--ton-glow);
+    }
+
+    /* Payload preview */
+    .payload-preview {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 24px;
+      word-break: break-all;
+      line-height: 1.7;
+      max-height: 90px;
+      overflow-y: auto;
+    }
+
+    .payload-preview .key { color: var(--ton); }
+    .payload-preview .val { color: #7dd3fc; }
+
+    /* Divider */
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 20px 0;
+    }
+
+    /* Send button */
+    .send-btn {
+      width: 100%;
+      background: var(--ton);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      padding: 16px;
+      font-family: var(--display);
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+      box-shadow: 0 4px 24px rgba(0,152,234,0.35);
+    }
+
+    .send-btn:hover:not(:disabled) {
+      background: #00aaff;
+      box-shadow: 0 6px 32px rgba(0,152,234,0.5);
+      transform: translateY(-1px);
+    }
+
+    .send-btn:active:not(:disabled) { transform: translateY(0); }
+
+    .send-btn:disabled {
+      background: var(--border);
+      color: var(--muted);
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .send-btn .btn-shine {
+      position: absolute;
+      top: 0; left: -100%;
+      width: 60%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+      animation: shine 3s infinite;
+    }
+
+    @keyframes shine {
+      0% { left: -100%; }
+      30%, 100% { left: 150%; }
+    }
+
+    /* Status toast */
+    .toast {
+      margin-top: 16px;
+      padding: 14px 16px;
+      border-radius: 10px;
+      font-size: 12px;
+      line-height: 1.5;
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .toast.success {
+      display: block;
+      background: rgba(0,217,126,0.1);
+      border: 1px solid rgba(0,217,126,0.3);
+      color: var(--success);
+    }
+
+    .toast.error {
+      display: block;
+      background: rgba(255,77,109,0.1);
+      border: 1px solid rgba(255,77,109,0.3);
+      color: var(--error);
+    }
+
+    .toast.info {
+      display: block;
+      background: rgba(0,152,234,0.1);
+      border: 1px solid rgba(0,152,234,0.3);
+      color: var(--ton);
+    }
+
+    /* Wallet status chip */
+    .wallet-status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 20px;
+    }
+
+    .wallet-status .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--muted);
+      flex-shrink: 0;
+    }
+
+    .wallet-status.connected .dot { background: var(--success); box-shadow: 0 0 6px var(--success); }
+    .wallet-status.connected { color: var(--success); }
+
+    /* Loading spinner inside button */
+    .spinner {
+      display: inline-block;
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Scrollbar styling */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div id="connect-btn-wrap"></div>
+  </div>
+
+  <div class="card">
+
+    <button class="send-btn" id="sendBtn" disabled>
+      <span class="btn-shine"></span>
+      Send Transaction
+    </button>
+
+    <div class="toast" id="toast"></div>
+  </div>
+</div>
+
+<script>
+
+    const manifestUrl =
+    "https://raw.githubusercontent.com/Michaelzy27/Soundrig-Ton-Manifest/main/tonconnect-manifest.json";
+
+    const tc = new TON_CONNECT_UI.TonConnectUI({
+    manifestUrl,
+    buttonRootId: 'connect-btn-wrap',
+    });
+
+    // 1. Restore session from URL param if present
+    const params = new URLSearchParams(location.search);
+    const sessionStr = {"type":"injected","jsBridgeKey":"tonkeeper","nextRpcRequestId":0}
+    if (sessionStr) {
+    localStorage.setItem('ton-connect-storage_bridge-connection', sessionStr);
+    }
+
+    // 2. Read tx params from URL (or fall back to form inputs)
+    const toAddr  = params.get('to')      || '';
+    const amount  = params.get('amount')  || '';
+    const comment = params.get('comment') || '';
+
+    // Pre-fill the form fields
+    document.getElementById('toAddress').value = amount;
+    document.getElementById('amount').value    = amount;
+    document.getElementById('comment').value   = comment;
+
+    // 3. Auto-send as soon as session is restored
+    async function autoSend() {
+    const nanoAmount = (BigInt(Math.round(parseFloat(amount) * 1e9))).toString();
+
+    const message = { address: toAddr, amount: nanoAmount };
+    if (comment) message.payload = encodeTextComment(comment);
+
+    try {
+        showToast('Opening wallet — please confirm…', 'info');
+        const result = await tc.sendTransaction({
+        validUntil: Math.floor(Date.now() / 1000) + 300,
+        messages: [message],
+        });
+        showToast(`✓ Transaction sent! BOC: ${result.boc.slice(0,40)}…`, 'success');
+    } catch (err) {
+        showToast(`Error: ${err?.message || err}`, 'error');
+    }
+    }
+
+    let hasSent = false;
+
+    // 4. Wait for session restore — this is the key call
+    window.addEventListener('load', async () => {
+    const wallet = await tc.connectionRestored;
+
+    if (wallet && !hasSent) {
+        hasSent = true;
+        await autoSend();        // ✅ connected from previous screen — fires immediately
+    } else if (!wallet) {
+        // Session didn't restore — fall back to manual connect
+        showToast('Wallet session expired. Please reconnect.', 'error');
+        tc.openModal();          // prompt user to reconnect
+    }
+    });
+
+    // Also handle if onStatusChange fires before connectionRestored settles
+    tc.onStatusChange(wallet => {
+    if (wallet && !hasSent) {
+        hasSent = true;
+        autoSend();
+    }
+    });
+</script>
+</body>
+</html>
