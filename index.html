@@ -405,8 +405,10 @@
 
     // 1. Restore session from URL param if present
     const params = new URLSearchParams(location.search);
-    const sessionStr = {"type":"injected","jsBridgeKey":"tonkeeper","nextRpcRequestId":0}
+    const sessionStr = params.get('tcsession');
     if (sessionStr) {
+        console.log("hehe");
+        
     localStorage.setItem('ton-connect-storage_bridge-connection', sessionStr);
     }
 
