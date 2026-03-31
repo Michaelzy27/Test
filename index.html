@@ -397,9 +397,9 @@
 
     const manifestUrl =
     "https://raw.githubusercontent.com/Michaelzy27/Soundrig-Ton-Manifest/main/tonconnect-manifest.json";
-
+    
     const tc = new TON_CONNECT_UI.TonConnectUI({
-    manifestUrl,
+    manifestUrl: 'https://YOUR_USERNAME.github.io/YOUR_REPO/tonconnect-manifest.json',
     buttonRootId: 'connect-btn-wrap',
     });
 
@@ -407,8 +407,6 @@
     const params = new URLSearchParams(location.search);
     const sessionStr = params.get('tcsession');
     if (sessionStr) {
-        console.log("hehe");
-        
     localStorage.setItem('ton-connect-storage_bridge-connection', sessionStr);
     }
 
