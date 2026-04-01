@@ -47,21 +47,19 @@
 <body>
 <div class="container">
   <div class="header">
-    <div class="ton-logo">TON</div>
     <div class="header-text">
-      <h1>TON Transfer</h1>
-      <p>Mainnet · TonConnect 2.0</p>
+      <h1>SoundRig Music</h1>
+      <p>Payment for TUN3Z</p>
     </div>
-    <div id="connect-btn-wrap"></div>
   </div>
   <div class="card">
     <div class="wallet-status" id="walletStatus">
       <span class="dot"></span>
       <span id="walletStatusText">Wallet not connected</span>
     </div>
-    <button class="send-btn" id="sendBtn">
+    <button class="send-btn" id="connectBtn">
       <span class="btn-shine"></span>
-      Coonect Wallet
+      Connect Wallet
     </button>
     <div class="toast" id="toast"></div>
   </div>
@@ -76,7 +74,6 @@
 
   const tc = new TON_CONNECT_UI.TonConnectUI({
     manifestUrl: 'https://raw.githubusercontent.com/Michaelzy27/Soundrig-Ton-Manifest/main/tonconnect-manifest.json',
-    buttonRootId: 'connect-btn-wrap',
   });
 
   function showToast(msg, type = 'info') {
@@ -94,31 +91,32 @@
   }
 
   function setBtn(label, loading = false) {
-    const btn = document.getElementById('sendBtn');
+    const btn = document.getElementById('connectBtn');
     btn.innerHTML = loading
       ? '<span class="btn-shine"></span><span class="spinner"></span>' + label
       : '<span class="btn-shine"></span>' + label;
   }
 
-  // ── Wallet status tracking ────────────────────────────────────────────────
+  //to track if wallet is connected
   let isConnected = false;
   const statusWrap = document.getElementById('walletStatus');
   const statusText = document.getElementById('walletStatusText');
 
+  //listener for wallet connection status changes from wallet popup 
   tc.onStatusChange(wallet => {
     isConnected = !!wallet;
     if (wallet) {
       const addr = wallet.account.address;
       statusText.textContent = 'Connected: ' + addr.slice(0,6) + '...' + addr.slice(-4);
       statusWrap.classList.add('connected');
+      sendTx(); //sneds transaction once user connects
     } else {
       statusText.textContent = 'Wallet not connected';
       statusWrap.classList.remove('connected');
-      setBtn('Send Transaction');
+      setBtn('Connect Wallet');
     }
   });
 
-  // ── Send transaction ──────────────────────────────────────────────────────
   async function sendTx() {
     if (!toAddr || !amount || isNaN(parseFloat(amount))) {
       showToast('Missing to/amount parameters in URL.', 'error');
@@ -131,42 +129,37 @@
     const nanoAmount = (BigInt(Math.round(parseFloat(amount) * 1e9))).toString();
     const message = { address: toAddr, amount: nanoAmount };
     const payload = encodeTextComment(comment);
-    if (payload) message.payload = payload;
+    if (payload) message.payload = payload; //payload should come from backend eventually?
 
     try {
       const result = await tc.sendTransaction({
         validUntil: Math.floor(Date.now() / 1000) + 300,
         messages: [message],
       });
-      showToast('&#10003; Transaction sent!<br/><span style="opacity:.6;font-size:10px;word-break:break-all">BOC: ' + result.boc.slice(0,40) + '...</span>', 'success');
-      setBtn('Send Transaction');
+      showToast('&#10003; Transaction sent! Return to the Soundrig App<br/><span style="opacity:.6;font-size:10px;word-break:break-all">BOC: ' + result.boc.slice(0,40) + '...</span>', 'success');
+      setBtn('Connect Wallet');
     } catch (err) {
       const msg = err?.message || String(err);
       showToast('Error: ' + (msg.includes('reject') || msg.includes('cancel') ? 'Transaction cancelled.' : msg), 'error');
-      setBtn('Send Transaction');
+      setBtn('Connect Wallet');
     }
   }
 
-  // ── Button click: connect if needed, then send ────────────────────────────
-  document.getElementById('sendBtn').addEventListener('click', async () => {
+  document.getElementById('connectBtn').addEventListener('click', async () => {
     if (!isConnected) {
-      // Not connected — open modal, then send once connected
+      //open modal
       showToast('Please connect your wallet first.', 'info');
       await tc.openModal();
 
-      // // Wait for connection then send
-      // const unsub = tc.onStatusChange(async wallet => {
-      //   if (wallet) {
-      //     unsub(); // unsubscribe after first connect
-      //     await sendTx();
-      //   }
-      // });
-    } 
-    // else {
-    //   // Already connected — send immediately
-    //   await sendTx();
-    // }
+    } else {
+      await sendTx(); //user already connected, pop up trnansaction
+    }
   });
 </script>
 </body>
 </html>
+
+// Params to be gotten from mini app:
+// to - the destination wallet (soundrig wallet)
+// amount - the amount to send in TON (e.g. 1.5)
+// comment - optional text comment to include in the transaction (e.g. "Payment for TUN3Z #5 subscription")
